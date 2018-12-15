@@ -1,7 +1,7 @@
 # SSDT-With-tSQLt-Template
 Template how a SSDT project can be setup including tSQLt
 
-To use this template you need the **PSModuleDevelopment** module which is part of the [PSFramework](https://github.com/PowershellFrameworkCollective/psframework) module
+To use this template you need the **PSModuleDevelopment** module which is part of the [PSFramework](https://github.com/PowershellFrameworkCollective/psframework) project
 
 Use the following command to create a new template from this directory
 
@@ -26,3 +26,5 @@ i.e.
 ```powershell
 Invoke-PSMDTemplate -TemplateName SSDTWithtSQLt -OutPath C:\Users\sande\source\repos\Databases -Name DatabaseProject1
 ```
+
+For more guidance on the template system, [visit the documentation pages for the module](https://psframework.org/documentation/documents/psmoduledevelopment/templates.html)
