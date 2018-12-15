@@ -7,7 +7,7 @@
     <Name>þnameþ_Tests</Name>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectVersion>4.1</ProjectVersion>
-    <ProjectGuid>{355bddf8-f612-4d74-b86b-7563e161a920}</ProjectGuid>
+    <ProjectGuid>þ!testProjectGuid!þ</ProjectGuid>
     <DSP>Microsoft.Data.Tools.Schema.Sql.Sql140DatabaseSchemaProvider</DSP>
     <OutputType>Database</OutputType>
     <RootPath>
@@ -249,7 +249,7 @@
   <ItemGroup>
     <ProjectReference Include="..\þnameþ-Data\þnameþ-Data.sqlproj">
       <Name>þnameþ-Data</Name>
-      <Project>{e73abfd3-156c-47f0-8885-d4f6a0d11c64}</Project>
+      <Project>þ!dataProjectGuid!þ</Project>
       <Private>True</Private>
       <SuppressMissingDependenciesErrors>False</SuppressMissingDependenciesErrors>
     </ProjectReference>

@@ -7,7 +7,7 @@
     <Name>þnameþ_Data</Name>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectVersion>4.1</ProjectVersion>
-    <ProjectGuid>{e73abfd3-156c-47f0-8885-d4f6a0d11c64}</ProjectGuid>
+    <ProjectGuid>þ!dataProjectGuid!þ</ProjectGuid>
     <DSP>Microsoft.Data.Tools.Schema.Sql.Sql140DatabaseSchemaProvider</DSP>
     <OutputType>Database</OutputType>
     <RootPath>
