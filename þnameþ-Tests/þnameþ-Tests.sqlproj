@@ -220,11 +220,8 @@
     <Build Include="tSQLt\Views\TestClasses.sql" />
     <Build Include="tSQLt\Views\Tests.sql" />
     <Build Include="Security\tSQLt.sql" />
-    <Build Include="Stored Procedures\test If table dbo.Address exists.sql" />
     <Build Include="Security\Testþnameþ.sql" />
     <Build Include="Security\TestBasic.sql" />
-    <Build Include="Stored Procedures\test If table dbo.AddressType exists.sql" />
-    <Build Include="Stored Procedures\test If table dbo.Analyte exists.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assemblies\tSQLtCLR.dll" />
