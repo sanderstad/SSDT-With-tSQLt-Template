@@ -1,3 +1,96 @@
+<#
+    .SYNOPSIS
+        Create the basic tests for the database project
+
+    .DESCRIPTION
+        The script will connect to a database on a SQL Server instance, iterate through objects and create tests for the objects.
+
+        The script will create the following tests
+        - Test if the database settings (i.e. collation) are correct
+        - Test if an object (Function, Procedure, Table, View etc) exists
+        - Test if an object (Function or Procedure) has the correct parameters
+        - Test if an object (Table or View) has the correct columns
+
+        Each object and each test will be it's own file.
+
+   .PARAMETER SqlInstance
+        The target SQL Server instance or instances. Server version must be SQL Server version 2012 or higher.
+
+        This should be the primary replica.
+
+    .PARAMETER SqlCredential
+        Login to the target instance using alternative credentials. Accepts PowerShell credentials (Get-Credential).
+
+        Windows Authentication, SQL Server Authentication, Active Directory - Password, and Active Directory - Integrated are all supported.
+
+        For MFA support, please use Connect-DbaInstance.
+
+    .PARAMETER Database
+        The database or databases to add.
+
+    .PARAMETER OutputPath
+        Folder where the files should be written to
+
+    .PARAMETER TemplateFolder
+        The template folder containing all the templates for the tests.
+        By default it will try to look it up in the same directory as this script with the name "TestTemplates"
+
+    .PARAMETER Function
+        Filter out specific functions that should only be processed
+
+    .PARAMETER Procedure
+        Filter out specific procedures that should only be processed
+
+    .PARAMETER Table
+        Filter out specific tables that should only be processed
+
+    .PARAMETER View
+        Filter out specific views that should only be processed
+
+    .PARAMETER SkipDatabaseTest
+        Skip the database tests
+
+    .PARAMETER SkipFunctionTests
+        Skip the function tests
+
+    .PARAMETER SkipProcedureTests
+        Skip the procedure tests
+
+    .PARAMETER SkipTableTests
+        Skip the table tests
+
+    .PARAMETER SkipViewTests
+        Skip the view tests
+
+    .PARAMETER WhatIf
+        Shows what would happen if the command were to run. No actions are actually performed.
+
+    .PARAMETER Confirm
+        Prompts you for confirmation before executing any changing operations within the command.
+
+    .PARAMETER EnableException
+        By default, when something goes wrong we try to catch it, interpret it and give you a friendly warning message.
+        This avoids overwhelming you with "sea of red" exceptions, but is inconvenient because it basically disables advanced scripting.
+        Using this switch turns this "nice by default" feature off and enables you to catch exceptions with your own try/catch.
+
+    .EXAMPLE
+        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic
+
+        Iterate through all the objects and output the files to "c:\projects\DB1\DB1-Tests\TestBasic"
+
+    .EXAMPLE
+        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -Procedure Proc1, Proc2
+
+        Iterate through all the objects but only do "Proc1" and "Proc2" for the procedures.
+
+        NOTE! All other tests like the table, function and view tests will still be generated
+
+    .EXAMPLE
+        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -SkipProcedureTests
+
+        Iterate through all the objects but do not process the procedures
+    #>
+
 [CmdletBinding()]
 
 param(
@@ -14,7 +107,8 @@ param(
     [switch]$SkipFunctionTests,
     [switch]$SkipProcedureTests,
     [switch]$SkipTableTests,
-    [switch]$SkipViewTests
+    [switch]$SkipViewTests,
+    [switch]$EnableException
 )
 
 # Check if neccesary modules are installed
