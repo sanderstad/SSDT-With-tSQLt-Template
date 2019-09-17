@@ -74,19 +74,19 @@
         Using this switch turns this "nice by default" feature off and enables you to catch exceptions with your own try/catch.
 
     .EXAMPLE
-        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic
+        PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic
 
         Iterate through all the objects and output the files to "c:\projects\DB1\DB1-Tests\TestBasic"
 
     .EXAMPLE
-        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -Procedure Proc1, Proc2
+        PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -Procedure Proc1, Proc2
 
         Iterate through all the objects but only do "Proc1" and "Proc2" for the procedures.
 
         NOTE! All other tests like the table, function and view tests will still be generated
 
     .EXAMPLE
-        PS C:\> .\Invoke-CreateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -SkipProcedureTests
+        PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -SkipProcedureTests
 
         Iterate through all the objects but do not process the procedures
     #>
