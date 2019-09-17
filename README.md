@@ -61,7 +61,7 @@ The tests are created using template files. The template files are located in th
 To generate the tests for the entire database, run the following command
 
 ```powershell
-PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic
+PS C:\> .\New-tSQLtBasicTest.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic
 ```
 
 To filter for certain objects use one or more of the following parameters
@@ -72,7 +72,7 @@ To filter for certain objects use one or more of the following parameters
 - View
 
 ```powershell
-PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -procedure Proc1, Proc2
+PS C:\> .\New-tSQLtBasicTest.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -procedure Proc1, Proc2
 ```
 
 In some cases you may find it easier to skip certain tests
@@ -84,5 +84,5 @@ In some cases you may find it easier to skip certain tests
 - SkipViewTests
 
 ```powershell
-PS C:\> .\Invoke-GenerateBasicTests.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -procedure Proc1, Proc2 -SkipTableTests -SkipViewTests
+PS C:\> .\New-tSQLtBasicTest.ps1 -SqlInstance SQLDB1 -Database DB1 -OutputPath c:\projects\DB1\DB1-Tests\TestBasic -procedure Proc1, Proc2 -SkipTableTests -SkipViewTests
 ```
