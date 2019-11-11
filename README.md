@@ -49,5 +49,5 @@ Install-Module PStSQLtTestGenerator -Scope CurrentUser
 To create the unit tests
 
 ```powershell
-Invoke-PSTGTestGenerator -SqlInstance [yourinstance] -Database [yourdatabase] -OutputPath [path to SSDt project test folder]
+Invoke-PSTGTestGenerator -SqlInstance [yourinstance] -Database [yourdatabase] -OutputPath [path to SSDT project test folder]
 ```
