@@ -54,16 +54,16 @@ stages:
 - stage: Test
 
   jobs:
-    - job: 'Linux'
-
+    - job: 'Linux2017'
+      displayName: 'SQL Server 2017'
       variables:
         variables:
-        dockerimage: 'sanderstad/sqlserver:sqlserver-cicd-fts'
+        dockerimage: 'sanderstad/sqlserver:sql2017-cu16-cicd-fts'
         dockerpublishport: 1433
         dockername: sql1
-        dockersqlpw: 'MyP@ssword'
+        dockersqlpw: 'MyP@ssw0rd'
         dacpacpath: /var/opt/cicd
-        testresultpath: $(Build.Repository.LocalPath)/build
+        testresultpath: $(Build.Repository.LocalPath)/build/sql2017
         dacpacfile: $(dacpacpath)/$(database)-Tests.dacpac
         publishfile: $(dacpacpath)/$(database)-Tests.publish.xml
 
@@ -90,7 +90,7 @@ stages:
           script: |
             docker run --name $(dockername) \
               -e "ACCEPT_EULA=Y" \
-              -e "SA_PASSWORD=MyP@ssword" \
+              -e "SA_PASSWORD=$(dockersqlpw)" \
               -p $(dockerpublishport):1433 \
               --volume $(System.ArtifactsDirectory)/$(artifactname):/var/opt/cicd \
               -d $(dockerimage)
@@ -110,24 +110,6 @@ stages:
             }
 
             Write-Host "##vso[task.setvariable variable=dockerip]$ipaddress"
-
-#      - task: Bash@3
-#        displayName: 'Install sqlpackage'
-#        inputs:
-#          targetType: 'inline'
-#          script: |
-#            echo 'Creating sqlpackage dir'
-#            sudo mkdir $(Build.Repository.LocalPath)/sqlpackage
-#
-#            # Install sqlpackage
-#            echo 'Downloading sqlpackage'
-#            sudo wget -q -O $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
-#
-#            echo 'Extracting sqlpackage.zip'
-#            sudo unzip -qq $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip -d /$(Build.Repository.LocalPath)/sqlpackage
-#
-#            echo 'Changing sqlpackage permissions'
-#            sudo chmod +x $(Build.Repository.LocalPath)/sqlpackage/sqlpackage
       - task: Bash@3
         displayName: 'Publish DACPAC'
         inputs:
@@ -149,6 +131,105 @@ stages:
           testResultsFormat: 'JUnit'
           testResultsFiles: '**/TEST-*.xml'
           failTaskOnFailedTests: true
+          testRunTitle: 'SQL Server 2017'
+
+    - job: 'Linux2019'
+      displayName: 'SQL Server 2019'
+      variables:
+        variables:
+        dockerimage: 'sanderstad/sqlserver:sql2019-ga-cicd-fts'
+        dockerpublishport: 1433
+        dockername: sql1
+        dockersqlpw: 'MyP@ssw0rd'
+        dacpacpath: /var/opt/cicd
+        testresultpath: $(Build.Repository.LocalPath)/build/sql2019
+        dacpacfile: $(dacpacpath)/$(database)-Tests.dacpac
+        publishfile: $(dacpacpath)/$(database)-Tests.publish.xml
+
+      pool:
+        vmImage: ubuntu-18.04
+
+      steps:
+      - task: PowerShell@2
+        displayName: 'Prerequisites'
+        inputs:
+          filePath: '$(Build.Repository.LocalPath)/Build/azure-prerequisites.ps1'
+
+      - task: DownloadBuildArtifacts@0
+        displayName: 'Dowload Artifacts'
+        inputs:
+          buildType: 'current'
+          downloadType: 'specific'
+          downloadPath: '$(System.ArtifactsDirectory)'
+
+      - task: Bash@3
+        displayName: 'Start SQL Server Container'
+        inputs:
+          targetType: 'inline'
+          script: |
+            docker run --name $(dockername) \
+              -e "ACCEPT_EULA=Y" \
+              -e "SA_PASSWORD=$(dockersqlpw)" \
+              -p $(dockerpublishport):1433 \
+              --volume $(System.ArtifactsDirectory)/$(artifactname):/var/opt/cicd \
+              -d $(dockerimage)
+
+      - task: PowerShell@2
+        displayName: Retrieving docker IP address
+        inputs:
+          targetType: 'inline'
+          script: |
+            $ipaddress = docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(dockername)
+
+            if(-not $ipaddress){
+              Write-Error "Could not get docker IP address"
+            }
+            else{
+              Write-Host "Ip Address found: $ipaddress"
+            }
+
+            Write-Host "##vso[task.setvariable variable=dockerip]$ipaddress"
+
+      - task: Bash@3
+        displayName: 'Publish DACPAC'
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo 'Get files in directory'
+            docker exec $(dockername) bash -c 'ls -la $(dacpacpath)'
+
+            docker exec $(dockername) bash -c '/opt/sqlpackage/sqlpackage /a:Publish /tsn:localhost /tdn:$(database) /tu:sa /tp:"$(dockersqlpw)" /sf:$(dacpacfile) /pr:$(publishfile) /p:IncludeCompositeObjects=true'
+
+      - task: PowerShell@2
+        displayName: 'Run Tests'
+        inputs:
+          filePath: '$(Build.Repository.LocalPath)/Build/azure-validate.ps1'
+          arguments: '-SqlInstance "$(sqlinstance)" -SqlPassword "$(dockersqlpw)" -Database $(database) -TestResultPath $(testresultpath) -EnableException'
+
+      - task: PublishTestResults@2
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/TEST-*.xml'
+          failTaskOnFailedTests: true
+          testRunTitle: 'SQL Server 2019'
+
+#      - task: Bash@3
+#        displayName: 'Install sqlpackage'
+#        inputs:
+#          targetType: 'inline'
+#          script: |
+#            echo 'Creating sqlpackage dir'
+#            sudo mkdir $(Build.Repository.LocalPath)/sqlpackage
+#
+#            # Install sqlpackage
+#            echo 'Downloading sqlpackage'
+#            sudo wget -q -O $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+#
+#            echo 'Extracting sqlpackage.zip'
+#            sudo unzip -qq $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip -d /$(Build.Repository.LocalPath)/sqlpackage
+#
+#            echo 'Changing sqlpackage permissions'
+#            sudo chmod +x $(Build.Repository.LocalPath)/sqlpackage/sqlpackage
 
 #    - job: 'TestWindows'
 #      variables:
