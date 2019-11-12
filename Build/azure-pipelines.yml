@@ -2,12 +2,9 @@
 #
 # The project is based on the SSDT-With-tSQLt-Template from https://github.com/sanderstad/SSDT-With-tSQLt-Template
 #
-# By default the Testing stage will use Linux but you can enable the Windows version.
-# Keep in mind that the Windows version of the SQL Server container is massive and will probably take 15 minute to load.
-#
-# The container image used is one I build myself from the SQL Server 2017 CU16 image
-# To make it easier to work with it has sqlpackage installed
-
+# The container image used is build from
+# - SQL Server 2017 CU16 image
+# - SQL Server 2019 GA image
 
 variables:
   configuration: release
@@ -58,7 +55,7 @@ stages:
       displayName: 'SQL Server 2017'
       variables:
         variables:
-        dockerimage: 'sanderstad/sqlserver:sql2017-cu16-cicd-fts'
+        dockerimage: 'sanderstad/sqlserver:sql2017-cu16-fts'
         dockerpublishport: 1433
         dockername: sql1
         dockersqlpw: 'MyP@ssw0rd'
@@ -82,6 +79,23 @@ stages:
           buildType: 'current'
           downloadType: 'specific'
           downloadPath: '$(System.ArtifactsDirectory)'
+      - task: Bash@3
+        displayName: 'Install sqlpackage'
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo 'Creating sqlpackage dir'
+            sudo mkdir $(Build.Repository.LocalPath)/sqlpackage
+
+            # Install sqlpackage
+            echo 'Downloading sqlpackage'
+            sudo wget -q -O $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+
+            echo 'Extracting sqlpackage.zip'
+            sudo unzip -qq $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip -d /$(Build.Repository.LocalPath)/sqlpackage
+
+            echo 'Changing sqlpackage permissions'
+            sudo chmod +x $(Build.Repository.LocalPath)/sqlpackage/sqlpackage
 
       - task: Bash@3
         displayName: 'Start SQL Server Container'
@@ -93,23 +107,9 @@ stages:
               -e "SA_PASSWORD=$(dockersqlpw)" \
               -p $(dockerpublishport):1433 \
               --volume $(System.ArtifactsDirectory)/$(artifactname):/var/opt/cicd \
+              --volume $(Build.Repository.LocalPath)/sqlpackage:/var/opt/sqlpackage \
               -d $(dockerimage)
 
-      - task: PowerShell@2
-        displayName: Retrieving docker IP address
-        inputs:
-          targetType: 'inline'
-          script: |
-            $ipaddress = docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(dockername)
-
-            if(-not $ipaddress){
-              Write-Error "Could not get docker IP address"
-            }
-            else{
-              Write-Host "Ip Address found: $ipaddress"
-            }
-
-            Write-Host "##vso[task.setvariable variable=dockerip]$ipaddress"
       - task: Bash@3
         displayName: 'Publish DACPAC'
         inputs:
@@ -118,7 +118,7 @@ stages:
             echo 'Get files in directory'
             sudo docker exec $(dockername) bash -c 'ls -la $(dacpacpath)'
 
-            sudo docker exec $(dockername) bash -c '/opt/sqlpackage/sqlpackage /a:Publish /tsn:localhost /tdn:$(database) /tu:sa /tp:"$(dockersqlpw)" /sf:$(dacpacfile) /pr:$(publishfile) /p:IncludeCompositeObjects=true'
+            sudo docker exec $(dockername) bash -c '/var/opt/sqlpackage/sqlpackage /a:Publish /tsn:localhost /tdn:$(database) /tu:sa /tp:"$(dockersqlpw)" /sf:$(dacpacfile) /pr:$(publishfile) /p:IncludeCompositeObjects=true'
 
       - task: PowerShell@2
         displayName: 'Run Tests'
@@ -137,7 +137,7 @@ stages:
       displayName: 'SQL Server 2019'
       variables:
         variables:
-        dockerimage: 'sanderstad/sqlserver:sql2019-ga-cicd-fts'
+        dockerimage: 'sanderstad/sqlserver:sql2019-ga-fts'
         dockerpublishport: 1433
         dockername: sql1
         dockersqlpw: 'MyP@ssw0rd'
@@ -161,6 +161,23 @@ stages:
           buildType: 'current'
           downloadType: 'specific'
           downloadPath: '$(System.ArtifactsDirectory)'
+      - task: Bash@3
+        displayName: 'Install sqlpackage'
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo 'Creating sqlpackage dir'
+            sudo mkdir $(Build.Repository.LocalPath)/sqlpackage
+
+            # Install sqlpackage
+            echo 'Downloading sqlpackage'
+            sudo wget -q -O $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+
+            echo 'Extracting sqlpackage.zip'
+            sudo unzip -qq $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip -d /$(Build.Repository.LocalPath)/sqlpackage
+
+            echo 'Changing sqlpackage permissions'
+            sudo chmod +x $(Build.Repository.LocalPath)/sqlpackage/sqlpackage
 
       - task: Bash@3
         displayName: 'Start SQL Server Container'
@@ -172,23 +189,8 @@ stages:
               -e "SA_PASSWORD=$(dockersqlpw)" \
               -p $(dockerpublishport):1433 \
               --volume $(System.ArtifactsDirectory)/$(artifactname):/var/opt/cicd \
+              --volume $(Build.Repository.LocalPath)/sqlpackage:/var/opt/sqlpackage \
               -d $(dockerimage)
-
-      - task: PowerShell@2
-        displayName: Retrieving docker IP address
-        inputs:
-          targetType: 'inline'
-          script: |
-            $ipaddress = docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(dockername)
-
-            if(-not $ipaddress){
-              Write-Error "Could not get docker IP address"
-            }
-            else{
-              Write-Host "Ip Address found: $ipaddress"
-            }
-
-            Write-Host "##vso[task.setvariable variable=dockerip]$ipaddress"
 
       - task: Bash@3
         displayName: 'Publish DACPAC'
@@ -198,7 +200,7 @@ stages:
             echo 'Get files in directory'
             docker exec $(dockername) bash -c 'ls -la $(dacpacpath)'
 
-            docker exec $(dockername) bash -c '/opt/sqlpackage/sqlpackage /a:Publish /tsn:localhost /tdn:$(database) /tu:sa /tp:"$(dockersqlpw)" /sf:$(dacpacfile) /pr:$(publishfile) /p:IncludeCompositeObjects=true'
+            docker exec $(dockername) bash -c '/var/opt/sqlpackage/sqlpackage /a:Publish /tsn:localhost /tdn:$(database) /tu:sa /tp:"$(dockersqlpw)" /sf:$(dacpacfile) /pr:$(publishfile) /p:IncludeCompositeObjects=true'
 
       - task: PowerShell@2
         displayName: 'Run Tests'
@@ -213,73 +215,7 @@ stages:
           failTaskOnFailedTests: true
           testRunTitle: 'SQL Server 2019'
 
-#      - task: Bash@3
-#        displayName: 'Install sqlpackage'
-#        inputs:
-#          targetType: 'inline'
-#          script: |
-#            echo 'Creating sqlpackage dir'
-#            sudo mkdir $(Build.Repository.LocalPath)/sqlpackage
-#
-#            # Install sqlpackage
-#            echo 'Downloading sqlpackage'
-#            sudo wget -q -O $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
-#
-#            echo 'Extracting sqlpackage.zip'
-#            sudo unzip -qq $(Build.Repository.LocalPath)/sqlpackage/sqlpackage.zip -d /$(Build.Repository.LocalPath)/sqlpackage
-#
-#            echo 'Changing sqlpackage permissions'
-#            sudo chmod +x $(Build.Repository.LocalPath)/sqlpackage/sqlpackage
 
-#    - job: 'TestWindows'
-#      variables:
-#        dockerimage: 'microsoft/mssql-server-windows-developer'
-#        dockerpublishport: 1433
-#        dockersqlpw: '<YourStrong@Passw0rd>'
-#        testresultpath: $(Build.Repository.LocalPath)\build
-#        dacpacfile: $(System.ArtifactsDirectory)\$(artifactname)\$(database)-Tests.dacpac
-#        publishfile: $(System.ArtifactsDirectory)\$(artifactname)\$(database)-Tests.publish.xml
-
-#      pool:
-#        vmImage: vs2017-win2016
-
-#      steps:
-#        - task: PowerShell@2
-#          displayName: 'Prerequisites'
-#          inputs:
-#            filePath: '$(Build.Repository.LocalPath)/build/azure-prerequisites.ps1'
-
-#        - task: DownloadBuildArtifacts@0
-#          displayName: 'Dowload Artifacts'
-#          inputs:
-#            buildType: 'current'
-#            downloadType: 'specific'
-#            downloadPath: '$(System.ArtifactsDirectory)'
-
-#        - task: Bash@3
-#          displayName: 'Start SQL Server Container'
-#          inputs:
-#            targetType: 'inline'
-#            script: 'docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=$(dockersqlpw)" -p $(dockerpublishport):1433 --name $(sqlinstance) -d $(dockerimage)'
-
-#        - task: PowerShell@2
-#          displayName: 'Publish DACPAC'
-#          inputs:
-#            filePath: '$(Build.Repository.LocalPath)/build/azure-publishdacpac.ps1'
-#            arguments: '-SqlInstance "$(sqlinstance),$(dockerpublishport)" -SqlPassword "$(dockersqlpw)" -Database $(database) -DacPacFile "$(dacpacfile)" -PublishXmlFile "$(publishfile)" -EnableException'
-#            failOnStderr: true
-
-#        - task: PowerShell@2
-#          displayName: 'Run Tests'
-#          inputs:
-#            filePath: '$(Build.Repository.LocalPath)/build/azure-validate.ps1'
-#            arguments: '-SqlInstance "$(sqlinstance)" -SqlPassword "$(dockersqlpw)" -Database $(database) -TestResultPath $(testresultpath) -EnableException'
-
-#        - task: PublishTestResults@2
-#          inputs:
-#            testResultsFormat: 'JUnit'
-#            testResultsFiles: '**/TEST-*.xml'
-#            failTaskOnFailedTests: true
 
 
 
