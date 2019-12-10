@@ -55,7 +55,7 @@ stages:
       displayName: 'SQL Server 2017'
       variables:
         variables:
-        dockerimage: 'sanderstad/sqlserver:sql2017-cu16-fts'
+        dockerimage: 'mcr.microsoft.com/mssql/server:2017-latest'
         dockerpublishport: 1433
         dockername: sql1
         dockersqlpw: 'MyP@ssw0rd'
@@ -137,7 +137,7 @@ stages:
       displayName: 'SQL Server 2019'
       variables:
         variables:
-        dockerimage: 'sanderstad/sqlserver:sql2019-ga-fts'
+        dockerimage: 'mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04'
         dockerpublishport: 1433
         dockername: sql1
         dockersqlpw: 'MyP@ssw0rd'
