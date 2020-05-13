@@ -58,7 +58,7 @@ stages:
         dockerimage: 'mcr.microsoft.com/mssql/server:2017-latest'
         dockerpublishport: 1433
         dockername: sql1
-        dockersqlpw: 'MyP@ssw0rd'
+        dockersqlpw: 'MyP@ssw0rd12345'
         dacpacpath: /var/opt/cicd
         testresultpath: $(Build.Repository.LocalPath)/build/sql2017
         dacpacfile: $(dacpacpath)/$(database)-Tests.dacpac
@@ -140,7 +140,7 @@ stages:
         dockerimage: 'mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04'
         dockerpublishport: 1433
         dockername: sql1
-        dockersqlpw: 'MyP@ssw0rd'
+        dockersqlpw: 'MyP@ssw0rd12345'
         dacpacpath: /var/opt/cicd
         testresultpath: $(Build.Repository.LocalPath)/build/sql2019
         dacpacfile: $(dacpacpath)/$(database)-Tests.dacpac
