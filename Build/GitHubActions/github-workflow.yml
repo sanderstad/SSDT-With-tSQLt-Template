@@ -1,16 +1,17 @@
-# This is a basic workflow to help you get started with Actions
+# SSDT Workflow for building and testing a SSDT solution.
+# The workflow will first build the project and upload the artifact.
+# After the build it will deploy the artifact to a SQL Server container and test the database
 
-name: SSDT-Build
+name: SSDT Build and Test
 
 # Set environment variables for all the jobs
 env:
-  configuration: release
+  configuration: Release
   sqlinstance: localhost
   database: UnitTesting
   artifactname: Database
+  testresultpath: $GITHUB_WORKSPACE/testresults
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
     branches: [ master ]
@@ -18,37 +19,149 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-    # The type of runner that the job will run on
+  Build-Solution:
     runs-on: windows-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+      name: Checkout code
 
+    - name: Setup MSBuild.exe
+      uses: warrenbuckley/Setup-MSBuild@v1
 
-    # Adds MSBuild to PATH on the agent
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.0
+    - name: Build
+      run: msbuild UnitTesting.sln /p:Configuration=${{ env.configuration }}
 
-    # Create artifact directory
-    - name: Create artifact directory
-      run: mkdir artifact
-
-    # Copy files to artifact directory
     - name: Copy artifact files
+      shell: powershell
       run: |
-        "Get-ChildItem -Path github.repository\${{env.database}}-Tests\bin\$configuration"
-        "copy ${{env.database}}-Tests\bin\$configuration\*.* artifact"
-        "copy ${{env.database}}-Data\*.publish.xml artifact"
-        "copy ${{env.database}}-Tests\*.publish.xml artifact"
+          $artifactPath = "artifact"
+          if(-not (Test-Path -Path $artifactPath)){
+            $null = New-Item -Path $artifactPath -ItemType Directory
+          }
 
-    # Upload all the artifact files
-    - name:  Upload artifact
-      uses: actions/upload-artifact@v1.0.0
+          Copy-Item -Path "${{ env.database }}-Tests\bin\${{ env.configuration }}\*.*" -Destination $artifactPath
+          Copy-Item -Path "**\*.publish.xml" -Destination $artifactPath
+
+          dir $artifactPath
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2.1.4
       with:
         # Artifact name
-        name: ${{env.artifactname}}
-        # Directory containing files to upload
-        path: "artifact"
+        name: UnitTesting
+        path:
+          artifact\*.*
+
+  Test-SQLServer-2019:
+    env:
+      testresultfile: TEST-UnitTesting_2017_tSQLt.xml
+      dockerpublishport: 1433
+      dockername: sql1
+      dockersqlpw: 'MyP@ssw0rd'
+      dacpacpath: /var/opt/cicd
+      dacpacfile: /var/opt/cicd/UnitTesting-Tests.dacpac
+      publishfile: /var/opt/cicd/UnitTesting-Tests.publish.xml
+
+    needs: [Build-Solution]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+
+    - name: Create neccesary directories
+      run: |
+        mkdir $GITHUB_WORKSPACE/architect
+        mkdir ${{ env.testresultpath }}
+
+    - name: Prerequisites
+      shell: pwsh
+      run: |
+        $modules = @("PSFramework", "PSModuleDevelopment", "dbatools")
+
+        foreach ($module in $modules) {
+            Write-Host "Installing $module" -ForegroundColor Cyan
+            Install-Module $module -Force -SkipPublisherCheck
+            Import-Module $module -Force -PassThru
+        }
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v2.0.5
+      with:
+        name: UnitTesting
+        path: artifact
+
+    - name: Check files
+      shell: bash
+      run: ls -la $GITHUB_WORKSPACE/artifact
+
+    - name: Install sqlpackage
+      shell: bash
+      run: |
+        echo 'Creating sqlpackage dir'
+        sudo mkdir $GITHUB_WORKSPACE/sqlpackage
+
+        echo 'Downloading sqlpackage'
+        sudo wget -q -O $GITHUB_WORKSPACE/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+
+        echo 'Extracting sqlpackage.zip'
+        sudo unzip -qq $GITHUB_WORKSPACE/sqlpackage/sqlpackage.zip -d sqlpackage
+
+        echo 'Changing sqlpackage permissions'
+        sudo chmod +x $GITHUB_WORKSPACE/sqlpackage/sqlpackage
+
+    - name: Start SQL Server 2019
+      shell: bash
+      run: |
+        docker run --name ${{ env.dockername }} \
+          -e "ACCEPT_EULA=Y" \
+          -e "SA_PASSWORD=${{ env.dockersqlpw }}" \
+          -p ${{ env.dockerpublishport }}:1433 \
+          --volume $GITHUB_WORKSPACE/artifact:/var/opt/cicd \
+          --volume $GITHUB_WORKSPACE/sqlpackage:/var/opt/sqlpackage \
+          -d mcr.microsoft.com/mssql/server:2019-latest
+
+        echo "Sleeping"
+        sleep 10s
+
+    - name: Publish DACPAC file
+      shell: bash
+      run: |
+        echo 'Get files in directory'
+        sudo docker exec ${{ env.dockername }} bash -c 'ls -la ${{ env.dacpacpath }}'
+        sudo docker exec ${{ env.dockername }} bash \
+          -c '/var/opt/sqlpackage/sqlpackage \
+          /a:Publish \
+          /tsn:localhost \
+          /tdn:${{ env.database }} \
+          /tu:sa \
+          /tp:"${{ env.dockersqlpw }}" \
+          /sf:${{ env.dacpacfile }} \
+          /pr:${{ env.publishfile }} \
+          /p:IncludeCompositeObjects=true'
+
+    - name: Run tests
+      shell: pwsh
+      run: |
+        $password = ConvertTo-SecureString ${{ env.dockersqlpw }} -AsPlainText -Force;
+        $SqlCredential = New-Object System.Management.Automation.PSCredential("sa", $password);
+
+        # Execute tests
+        $query = "EXEC tSQLt.RunAll"
+        $params = @{
+          SqlInstance = "${{ env.dockername }},${{ env.dockerpublishport }}"
+          SqlCredential = $SqlCredential
+          Database = "${{ env.database }}"
+          Query = "$query"
+          EnableException = $true
+        }
+        Invoke-DbaQuery @params
+
+        # Collect the tests
+        $query = "EXEC tSQLt.XmlResultFormatter"
+        $params.Query = $query
+        $result = Invoke-DbaQuery @params | Select-Object ItemArray -ExpandProperty ItemArray
+
+        # Write the test results
+        $result | Set-Content -NoNewLine -Path (Join-Path -Path "$GITHUB_WORKSPACE/testresults" -ChildPath "TEST-UnitTesting_2017_tSQLt.xml")
+
