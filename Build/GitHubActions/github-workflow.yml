@@ -1,0 +1,306 @@
+# SSDT Workflow for building and testing a SSDT solution.
+# The workflow will first build the project and upload the artifact.
+# After the build it will deploy the artifact to a SQL Server container and test the database
+
+name: SSDT Build and Test
+
+# Set environment variables for all the jobs
+env:
+  configuration: Release
+  sqlinstance: localhost
+  database: þnameþ
+  artifactname: Database
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Build-Solution:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      name: Checkout code
+
+    - name: Setup MSBuild.exe
+      uses: warrenbuckley/Setup-MSBuild@v1
+
+    - name: Build
+      run: msbuild þnameþ.sln /p:Configuration=${{ env.configuration }}
+
+    - name: Copy artifact files
+      shell: powershell
+      run: |
+          $artifactPath = "artifact"
+          if(-not (Test-Path -Path $artifactPath)){
+            $null = New-Item -Path $artifactPath -ItemType Directory
+          }
+
+          Copy-Item -Path "${{ env.database }}-Tests\bin\${{ env.configuration }}\*.*" -Destination $artifactPath
+          Copy-Item -Path "**\*.publish.xml" -Destination $artifactPath
+
+          dir $artifactPath
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        # Artifact name
+        name: þnameþ
+        path:
+          artifact\*.*
+
+  Test-SQLServer-2017:
+    env:
+      dockerpublishport: 1433
+      dockername: sql1
+      dockersqlpw: 'MyP@ssw0rd'
+      dacpacpath: /var/opt/cicd
+      dacpacfile: /var/opt/cicd/þnameþ-Tests.dacpac
+      publishfile: /var/opt/cicd/þnameþ-Tests.publish.xml
+
+    needs: [Build-Solution]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Prerequisites
+      shell: bash
+      run: |
+        echo "- Creating directories"
+        echo "  - artifact"
+        mkdir ${GITHUB_WORKSPACE}/artifact
+        echo "  - testresults"
+        mkdir ${GITHUB_WORKSPACE}/testresults
+        echo "  - sqlpackage"
+        mkdir ${GITHUB_WORKSPACE}/sqlpackage
+
+    - name: Import PowerShell modules
+      shell: pwsh
+      run: |
+        Write-Host "Importing modules"
+        $modules = @("PSFramework", "dbatools")
+
+        foreach ($module in $modules) {
+          Write-Host "Installing $module" -ForegroundColor Cyan
+          Install-Module $module -Force -SkipPublisherCheck
+          Import-Module $module -Force -PassThru
+        }
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v2.0.5
+      with:
+        name: þnameþ
+        path: artifact
+
+    - name: Check artifact files
+      shell: bash
+      run: |
+        pwd
+        ls -la artifact
+
+    - name: Install sqlpackage
+      shell: bash
+      run: |
+        echo 'Downloading sqlpackage'
+        sudo wget -q -O ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+
+        echo 'Extracting sqlpackage.zip'
+        sudo unzip -qq ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage.zip -d sqlpackage
+
+        echo 'Changing sqlpackage permissions'
+        sudo chmod +x ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage
+
+    - name: Start SQL Server 2017
+      shell: bash
+      run: |
+        docker run --name ${{ env.dockername }} \
+          -e "ACCEPT_EULA=Y" \
+          -e "SA_PASSWORD=${{ env.dockersqlpw }}" \
+          -p ${{ env.dockerpublishport }}:1433 \
+          --volume ${GITHUB_WORKSPACE}/artifact:/var/opt/cicd \
+          --volume ${GITHUB_WORKSPACE}/sqlpackage:/var/opt/sqlpackage \
+          -d mcr.microsoft.com/mssql/server:2017-latest
+
+        echo "Sleeping to give container a chance to start up completely"
+        sleep 10s
+
+    - name: Publish DACPAC file
+      shell: bash
+      run: |
+        echo 'Get files in directory'
+        sudo docker exec ${{ env.dockername }} bash -c 'ls -la ${{ env.dacpacpath }}'
+        sudo docker exec ${{ env.dockername }} bash \
+          -c '/var/opt/sqlpackage/sqlpackage \
+          /a:Publish \
+          /tsn:localhost \
+          /tdn:${{ env.database }} \
+          /tu:sa \
+          /tp:"${{ env.dockersqlpw }}" \
+          /sf:${{ env.dacpacfile }} \
+          /pr:${{ env.publishfile }} \
+          /p:IncludeCompositeObjects=true'
+
+    - name: Run tests
+      shell: pwsh
+      run: |
+        $password = ConvertTo-SecureString ${{ env.dockersqlpw }} -AsPlainText -Force;
+        $SqlCredential = New-Object System.Management.Automation.PSCredential("sa", $password);
+
+        # Execute tests
+        $query = "EXEC tSQLt.RunAll"
+        $params = @{
+          SqlInstance = "${{ env.sqlinstance }},${{ env.dockerpublishport }}"
+          SqlCredential = $SqlCredential
+          Database = "${{ env.database }}"
+          Query = "$query"
+          EnableException = $true
+        }
+        Invoke-DbaQuery @params
+
+        # Collect the tests
+        $query = "EXEC tSQLt.XmlResultFormatter"
+        $params.Query = $query
+        $result = Invoke-DbaQuery @params | Select-Object ItemArray -ExpandProperty ItemArray
+
+        # Write the test results
+        Write-Host "Test file path: '${{ github.workspace }}/testresults/TEST-þnameþ_2017_tSQLt.xml'"
+        $result | Set-Content -NoNewLine -Path "${{ github.workspace }}/testresults/TEST-þnameþ_2017_tSQLt.xml"
+
+    - name: Upload tests
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        # Artifact name
+        name: Testresult_SQLServer2017
+        path: "${{ github.workspace }}/testresults/TEST-þnameþ_2017_tSQLt.xml"
+
+  Test-SQLServer-2019:
+    env:
+      dockerpublishport: 1433
+      dockername: sql1
+      dockersqlpw: 'MyP@ssw0rd'
+      dacpacpath: /var/opt/cicd
+      dacpacfile: /var/opt/cicd/þnameþ-Tests.dacpac
+      publishfile: /var/opt/cicd/þnameþ-Tests.publish.xml
+
+    needs: [Build-Solution]
+
+    runs-on: ubuntu-20.04
+
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Prerequisites
+      shell: bash
+      run: |
+        echo "- Creating directories"
+        echo "  - artifact"
+        mkdir ${GITHUB_WORKSPACE}/artifact
+        echo "  - testresults"
+        mkdir ${GITHUB_WORKSPACE}/testresults
+        echo "  - sqlpackage"
+        mkdir ${GITHUB_WORKSPACE}/sqlpackage
+
+    - name: Import PowerShell modules
+      shell: pwsh
+      run: |
+        Write-Host "Importing modules"
+        $modules = @("PSFramework", "dbatools")
+
+        foreach ($module in $modules) {
+          Write-Host "Installing $module" -ForegroundColor Cyan
+          Install-Module $module -Force -SkipPublisherCheck
+          Import-Module $module -Force -PassThru
+        }
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v2.0.5
+      with:
+        name: þnameþ
+        path: artifact
+
+    - name: Check artifact files
+      shell: bash
+      run: |
+        pwd
+        ls -la artifact
+
+    - name: Install sqlpackage
+      shell: bash
+      run: |
+        echo 'Downloading sqlpackage'
+        sudo wget -q -O ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage.zip https://go.microsoft.com/fwlink/?linkid=2108814
+
+        echo 'Extracting sqlpackage.zip'
+        sudo unzip -qq ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage.zip -d sqlpackage
+
+        echo 'Changing sqlpackage permissions'
+        sudo chmod +x ${GITHUB_WORKSPACE}/sqlpackage/sqlpackage
+
+    - name: Start SQL Server 2019
+      shell: bash
+      run: |
+        docker run --name ${{ env.dockername }} \
+          -e "ACCEPT_EULA=Y" \
+          -e "SA_PASSWORD=${{ env.dockersqlpw }}" \
+          -p ${{ env.dockerpublishport }}:1433 \
+          --volume ${GITHUB_WORKSPACE}/artifact:/var/opt/cicd \
+          --volume ${GITHUB_WORKSPACE}/sqlpackage:/var/opt/sqlpackage \
+          -d mcr.microsoft.com/mssql/server:2019-latest
+
+        echo "Sleeping to give container a chance to start up completely"
+        sleep 10s
+
+    - name: Publish DACPAC file
+      shell: bash
+      run: |
+        echo 'Get files in directory'
+        sudo docker exec ${{ env.dockername }} bash -c 'ls -la ${{ env.dacpacpath }}'
+        sudo docker exec ${{ env.dockername }} bash \
+          -c '/var/opt/sqlpackage/sqlpackage \
+          /a:Publish \
+          /tsn:localhost \
+          /tdn:${{ env.database }} \
+          /tu:sa \
+          /tp:"${{ env.dockersqlpw }}" \
+          /sf:${{ env.dacpacfile }} \
+          /pr:${{ env.publishfile }} \
+          /p:IncludeCompositeObjects=true'
+
+    - name: Run tests
+      shell: pwsh
+      run: |
+        $password = ConvertTo-SecureString ${{ env.dockersqlpw }} -AsPlainText -Force;
+        $SqlCredential = New-Object System.Management.Automation.PSCredential("sa", $password);
+
+        # Execute tests
+        $query = "EXEC tSQLt.RunAll"
+        $params = @{
+          SqlInstance = "${{ env.sqlinstance }},${{ env.dockerpublishport }}"
+          SqlCredential = $SqlCredential
+          Database = "${{ env.database }}"
+          Query = "$query"
+          EnableException = $true
+        }
+        Invoke-DbaQuery @params
+
+        # Collect the tests
+        $query = "EXEC tSQLt.XmlResultFormatter"
+        $params.Query = $query
+        $result = Invoke-DbaQuery @params | Select-Object ItemArray -ExpandProperty ItemArray
+
+        # Write the test results
+        $result | Set-Content -NoNewLine -Path "${{ github.workspace }}/testresults/TEST-þnameþ_2019_tSQLt.xml"
+
+    - name: Upload tests
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        # Artifact name
+        name: Testresult_SQLServer2019
+        path: "${{ github.workspace }}/testresults/TEST-þnameþ_2019_tSQLt.xml"
