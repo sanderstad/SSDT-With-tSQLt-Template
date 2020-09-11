@@ -110,6 +110,9 @@ stages:
               --volume $(Build.Repository.LocalPath)/sqlpackage:/var/opt/sqlpackage \
               -d $(dockerimage)
 
+            echo "Sleeping to give container a chance to start up completely"
+            sleep 10s
+
       - task: Bash@3
         displayName: 'Publish DACPAC'
         inputs:
@@ -191,6 +194,9 @@ stages:
               --volume $(System.ArtifactsDirectory)/$(artifactname):/var/opt/cicd \
               --volume $(Build.Repository.LocalPath)/sqlpackage:/var/opt/sqlpackage \
               -d $(dockerimage)
+
+            echo "Sleeping to give container a chance to start up completely"
+            sleep 10s
 
       - task: Bash@3
         displayName: 'Publish DACPAC'
