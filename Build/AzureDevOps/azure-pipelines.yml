@@ -71,7 +71,7 @@ stages:
       - task: PowerShell@2
         displayName: 'Prerequisites'
         inputs:
-          filePath: '$(Build.Repository.LocalPath)/Build/azure-prerequisites.ps1'
+          filePath: '$(Build.Repository.LocalPath)/Build/AzureDevOps/azure-prerequisites.ps1'
 
       - task: DownloadBuildArtifacts@0
         displayName: 'Dowload Artifacts'
@@ -123,7 +123,7 @@ stages:
       - task: PowerShell@2
         displayName: 'Run Tests'
         inputs:
-          filePath: '$(Build.Repository.LocalPath)/Build/azure-validate.ps1'
+          filePath: '$(Build.Repository.LocalPath)/Build/AzureDevOps/azure-validate.ps1'
           arguments: '-SqlInstance "$(sqlinstance)" -SqlPassword "$(dockersqlpw)" -Database $(database) -TestResultPath $(testresultpath) -EnableException'
 
       - task: PublishTestResults@2
@@ -153,7 +153,7 @@ stages:
       - task: PowerShell@2
         displayName: 'Prerequisites'
         inputs:
-          filePath: '$(Build.Repository.LocalPath)/Build/azure-prerequisites.ps1'
+          filePath: '$(Build.Repository.LocalPath)/Build/AzureDevOps/azure-prerequisites.ps1'
 
       - task: DownloadBuildArtifacts@0
         displayName: 'Dowload Artifacts'
@@ -205,7 +205,7 @@ stages:
       - task: PowerShell@2
         displayName: 'Run Tests'
         inputs:
-          filePath: '$(Build.Repository.LocalPath)/Build/azure-validate.ps1'
+          filePath: '$(Build.Repository.LocalPath)/Build/AzureDevOps/azure-validate.ps1'
           arguments: '-SqlInstance "$(sqlinstance)" -SqlPassword "$(dockersqlpw)" -Database $(database) -TestResultPath $(testresultpath) -EnableException'
 
       - task: PublishTestResults@2
