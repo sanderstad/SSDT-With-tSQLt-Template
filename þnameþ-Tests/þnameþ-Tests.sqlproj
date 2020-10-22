@@ -75,7 +75,6 @@
     <Build Include="tSQLt\Functions\F_Num.sql" />
     <Build Include="tSQLt\Functions\GetTestResultFormatter.sql" />
     <Build Include="tSQLt\Functions\Info.sql" />
-    <Build Include="tSQLt\Functions\Private_Bin2Hex.sql" />
     <Build Include="tSQLt\Functions\Private_FindConstraint.sql" />
     <Build Include="tSQLt\Functions\Private_GetCleanObjectName.sql" />
     <Build Include="tSQLt\Functions\Private_GetCleanSchemaName.sql" />
@@ -84,7 +83,6 @@
     <Build Include="tSQLt\Functions\Private_GetConstraintType.sql" />
     <Build Include="tSQLt\Functions\Private_GetDataTypeOrComputedColumnDefinition.sql" />
     <Build Include="tSQLt\Functions\Private_GetDefaultConstraintDefinition.sql" />
-    <Build Include="tSQLt\Functions\Private_GetExternalAccessKeyBytes.sql" />
     <Build Include="tSQLt\Functions\Private_GetForeignKeyDefinition.sql" />
     <Build Include="tSQLt\Functions\Private_GetForeignKeyParColumns.sql" />
     <Build Include="tSQLt\Functions\Private_GetForeignKeyRefColumns.sql" />
@@ -222,6 +220,22 @@
     <Build Include="Security\tSQLt.sql" />
     <Build Include="Security\Testþnameþ.sql" />
     <Build Include="Security\TestBasic.sql" />
+    <Build Include="tSQLt\Functions\%40tSQLt_MaxSqlMajorVersion.sql" />
+    <Build Include="tSQLt\Functions\%40tSQLt_MinSqlMajorVersion.sql" />
+    <Build Include="tSQLt\Functions\%40tSQLt_SkipTest.sql" />
+    <Build Include="tSQLt\Functions\Private_GetAnnotationList.sql" />
+    <Build Include="tSQLt\Functions\Private_ListTestAnnotations.sql" />
+    <Build Include="tSQLt\Functions\Private_PrepareTestResultForOutput.sql" />
+    <Build Include="tSQLt\Functions\Private_SplitSqlVersion.sql" />
+    <Build Include="tSQLt\Stored Procedures\InstallAssemblyKey.sql" />
+    <Build Include="tSQLt\Stored Procedures\PrepareServer.sql" />
+    <Build Include="tSQLt\Stored Procedures\Private_EnableCLR.sql" />
+    <Build Include="tSQLt\Stored Procedures\Private_GetAssemblyKeyBytes.sql" />
+    <Build Include="tSQLt\Stored Procedures\Private_GetSQLProductMajorVersion.sql" />
+    <Build Include="tSQLt\Stored Procedures\Private_ProcessTestAnnotations.sql" />
+    <Build Include="tSQLt\Stored Procedures\Private_SkipTestAnnotationHelper.sql" />
+    <Build Include="tSQLt\Stored Procedures\RemoveAssemblyKey.sql" />
+    <Build Include="tSQLt\Stored Procedures\SetSummaryError.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assemblies\tSQLtCLR.dll" />
