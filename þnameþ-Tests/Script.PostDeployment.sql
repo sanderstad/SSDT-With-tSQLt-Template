@@ -10,13 +10,10 @@ Post-Deployment Script Template
 --------------------------------------------------------------------------------------
 */
 
-IF(ISNULL(CAST(SERVERPROPERTY('ProductMajorVersion') AS INT),0) >= 14)
+IF (ISNULL(CAST(SERVERPROPERTY('ProductMajorVersion') AS INT), 0) >= 14)
 BEGIN
-    EXEC tSQLt.InstallExternalAccessKey;
-    EXEC master.sys.sp_executesql N'GRANT UNSAFE ASSEMBLY TO [tSQLtExternalAccessKey];';
-    EXEC sp_configure 'clr strict security', 1;
-    RECONFIGURE;
-END
+    EXEC tSQLt.InstallAssemblyKey;
+END;
 GO
 
 --EXEC tSQLt.RunAll
